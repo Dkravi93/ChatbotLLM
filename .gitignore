@@ -122,7 +122,8 @@ celerybeat.pid
 # Environments
 .env
 .venv
-env/
+chatbot_env/
+chatbot_app/alembic
 venv/
 ENV/
 env.bak/

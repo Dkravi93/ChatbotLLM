@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+pydantic
+python-jose
+passlib
+python-dotenv
+langchain-groq
+langgraph
+psycopg2-binary
