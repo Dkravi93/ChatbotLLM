@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from fastapi import HTTPException
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.models.user import User
@@ -22,10 +23,24 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(hours=1
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, key=SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 # Dependency to get current user
 async def get_current_user(db: AsyncSession, username: str):
     user = await db.execute(f"SELECT * FROM users WHERE username = {username}")
     return user
+
+def verify_token(token: str):
+    try:
+        # Decode the token and verify the validity
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return username
+    
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")

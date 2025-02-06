@@ -27,7 +27,8 @@ const RegisterPage = () => {
         password,
       });
 
-      const { token } = response.data; // Assuming your API returns a JWT token
+      const { token } = response.data;
+      console.log("OOOOOOO",token);
       setToken(token);
       navigate('/home'); // Redirect to HomePage after registration
     } catch (err) {

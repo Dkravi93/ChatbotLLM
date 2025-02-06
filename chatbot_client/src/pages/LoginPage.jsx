@@ -15,12 +15,14 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       // Make an API request to your FastAPI backend for login
-      const response = await axios.post('http://localhost:8000/api/login', {
-        email,
+      const response = await axios.post('http://localhost:8000/api/users/login', {
+        username : email,
         password,
       });
 
-      const { token } = response.data; // Assuming your API returns a JWT token
+      const { token } = response.data;
+      console.log("tttttt", token);
+      
       setToken(token);
       login(token);
       navigate('/home'); // Redirect to HomePage after login
@@ -35,7 +37,7 @@ const LoginPage = () => {
       {error && <p className="text-red-500 text-center">{error}</p>}
       <form onSubmit={handleSubmit}>
         <input
-          type="email"
+          type="text"
           placeholder="Email"
           className="w-full p-2 mb-4 border border-gray-300 rounded"
           value={email}

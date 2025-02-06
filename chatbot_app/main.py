@@ -19,6 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    return {"message": "Hello World"}
+
 app.include_router(user_router, prefix="/api/users", tags=["users"])
 
 # Include query routes

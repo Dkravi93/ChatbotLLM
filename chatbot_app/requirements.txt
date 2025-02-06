@@ -9,3 +9,5 @@ python-dotenv
 langchain-groq
 langgraph
 psycopg2-binary
+alembic
+bycrypt

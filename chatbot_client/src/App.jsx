@@ -18,7 +18,7 @@ function App() {
           
           {/* Private routes that require authentication */}
           <Route element={<PrivateRoute />}>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/home" element={<HomePage />} />
             <Route path="/chatbot" element={<ChatbotPage />} />
           </Route>
         </Routes>

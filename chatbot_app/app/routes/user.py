@@ -1,17 +1,19 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import SQLAlchemyError
 from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin
 from app.database.connection import get_db
-from app.utils.auth import hash_password, verify_password, create_access_token
+from app.utils.auth import hash_password, verify_password, create_access_token, verify_token
 import logging
 import traceback
 
 router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 @router.post("/register")
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -43,12 +45,16 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
         # Add user to the database
         db.add(new_user)
-        await db.commit()  # Commit the transaction to the database
+        token = create_access_token(data={"sub": new_user.username})
+        await db.commit()
 
         # Refresh the user to get the ID
         await db.refresh(new_user)
 
-        return {"msg": "User registered successfully"}
+        # Return the token along with the success message
+        return {"msg": "User registered successfully", "token": token, "token_type": "bearer"}
+
+
 
     except SQLAlchemyError as e:
         # Rollback if there is an error
@@ -59,13 +65,36 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
 
 @router.post("/login")
 async def login_user(user: UserLogin, db: AsyncSession = Depends(get_db)):
-    # Check if user exists
-    result = await db.execute(select(User).filter(User.username == user.username))
-    db_user = result.scalars().first()
+    try:
+        # Check if user exists
+        result = await db.execute(select(User).filter((User.username == user.username) | (User.email == user.username)))
+        db_user = result.scalars().first()
 
-    if db_user is None or not verify_password(user.password, db_user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        if db_user is None or not verify_password(user.password, db_user.hashed_password):
+            raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Generate JWT token
-    token = create_access_token(data={"sub": db_user.username})
-    return {"access_token": token, "token_type": "bearer"}
+        # Generate JWT token
+        token = create_access_token(data={"sub": db_user.username})
+        return {"token": token, "token_type": "bearer"}
+
+    except SQLAlchemyError as e:
+        logger.error(f"An error occurred while logging in the user: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"An error occurred while logging in the user: {str(e)}")
+
+@router.get("/me")
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    try:
+        # Use the verify_token function to fetch the user from the database
+        username = verify_token(token)
+        db_user = await db.execute(select(User).filter(User.username == username))
+        user = db_user.scalars().first()
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+
+        # Return user data (you can adjust what data to return as needed)
+        return {"id": user.id, "username": user.username, "email": user.email}
+    except SQLAlchemyError as e:
+        logger.error(f"An error occurred while logging in the user: {str(e)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=f"An error occurred while logging in the user: {str(e)}")
