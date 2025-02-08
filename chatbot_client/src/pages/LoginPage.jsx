@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { setToken } from '../utils/auth';
 import axios from 'axios';
 
 const LoginPage = () => {
+  const { user, login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  if (user) {
+    navigate(location.state?.from || "/home", { replace: true });
+  }
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth();
-  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +29,7 @@ const LoginPage = () => {
       
       setToken(token);
       login(token);
-      navigate('/home'); // Redirect to HomePage after login
+      navigate('/home');
     } catch (err) {
       setError('Login failed. Please check your credentials.');
     }

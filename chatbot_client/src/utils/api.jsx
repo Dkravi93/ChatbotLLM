@@ -9,7 +9,7 @@ const api = axios.create({
 // Function to send a query (for example, for a chatbot)
 export const sendQuery = async (query) => {
   try {
-    const response = await api.post('/query', { query });
+    const response = await api.post('/query', query);
     return response.data;
   } catch (error) {
     console.error("Error:", error);
@@ -20,8 +20,8 @@ export const sendQuery = async (query) => {
 // Function to fetch user data by token
 export const fetchUserData = async () => {
   try {
-    // Retrieve the JWT token from localStorage (or wherever it is stored)
-    const token = getToken(); // Adjust according to your storage method
+
+    const token = getToken();
 
     if (!token) {
       throw new Error("No token found. Please log in.");

@@ -7,6 +7,7 @@ from app.models.user import User
 from app.schemas.user import UserCreate, UserLogin
 from app.database.connection import get_db
 from app.utils.auth import hash_password, verify_password, create_access_token, verify_token
+from cachetools import TTLCache
 import logging
 import traceback
 
@@ -14,6 +15,7 @@ router = APIRouter()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+user_cache = TTLCache(maxsize=1000, ttl=1800)  # Cache up to 1000 users for 5 minutes
 
 @router.post("/register")
 async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
@@ -46,6 +48,11 @@ async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
         # Add user to the database
         db.add(new_user)
         token = create_access_token(data={"sub": new_user.username})
+        user_cache[new_user.username] = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        }
         await db.commit()
 
         # Refresh the user to get the ID
@@ -72,7 +79,11 @@ async def login_user(user: UserLogin, db: AsyncSession = Depends(get_db)):
 
         if db_user is None or not verify_password(user.password, db_user.hashed_password):
             raise HTTPException(status_code=401, detail="Invalid credentials")
-
+        user_cache[user.username] = {
+            "id": db_user.id,
+            "username": db_user.username,
+            "email": db_user.email
+        }
         # Generate JWT token
         token = create_access_token(data={"sub": db_user.username})
         return {"token": token, "token_type": "bearer"}
@@ -92,7 +103,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         if user is None:
             raise HTTPException(status_code=401, detail="User not found")
 
-        # Return user data (you can adjust what data to return as needed)
+        user_cache[user.username] = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email
+        }
+        user_cache.update({'current_user' : user.username})
+        logger.info(f"User cache updated: {user_cache}")
         return {"id": user.id, "username": user.username, "email": user.email}
     except SQLAlchemyError as e:
         logger.error(f"An error occurred while logging in the user: {str(e)}")
